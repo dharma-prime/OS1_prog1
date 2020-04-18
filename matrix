@@ -1,0 +1,280 @@
+#!/bin/bash
+#
+# Program Name: matrix
+# Author: Bodhidharma Prime
+# Date: 10/8/19
+# Description: Performs matrix opperations for given inputs
+
+# GLOBAL VARIABLES
+newMatrix=./temp1$$
+
+# Function Name: num_row
+# Description: Counts the number of rows in NxM array
+# Input: File containing tab dilineated NxM array
+# Output: Returns N to stdout
+num_row () {
+	#Count number of \n characters
+	temp=$(wc -l "$1" | cut -f1 -d " ")
+	echo "$temp"
+}
+
+# Function Name: num_col
+# Description: Counts the number of columns in a NxM array
+# Input: File containing tab dilineated NxM array
+# Output: Returns M to stdout
+num_col () {
+	#For single row, change '\t' lto '\n' and count '\n'
+	temp=$(head -1 $1 | tr "\t" "\n" | wc -l | cut -f1 -d " ")
+	echo "$temp"
+}
+
+# Function Name: dims
+# Description: echos out the number of rows and columns in a matrix
+# Input: File containing tab delineated NxM matrix
+# Output: Returns "N M" to stdout
+
+# Status: Full points!
+dims () { 
+	echo -e "$(num_row $1) $(num_col $1)"
+}
+
+# Function Name: transpose
+# Description: takes an N x M matrix and flips the rows and cols
+# Input: File containing tab delineated NxM matrix
+# Return: Returns new MxN matrix to stdout
+
+# Status: Full points!
+transpose () {
+	c1=$(num_col $1);i=1;
+	#Itterate through # rows
+	while [[ $i -le $c1 ]]
+	do
+		#For each col, switch it to a row, append to new file
+		newRow=$(cut -f $i $1 | tr '\n' '\t');newRow=${newRow%?}
+		echo -e "$newRow" >> $newMatrix
+		#Increment counter
+		i=$(expr $i + 1)
+	done
+	cat $newMatrix
+}
+
+# Function Name: mean
+# Description: averages all of the values for N rows of a NxM matrix
+#              rounds 0.5 away from zero
+# Input: File containing tab delineated NxM matrix
+# Output: Returns 1xN matrix of means to stdout
+
+# Status: Full points!!!
+mean () {
+	c1=$(num_col $1);r1=$(num_row $1)
+	i=1;j=1;
+	newCol=./tempRow$$
+	mean=./tempM$$
+	#Itterate through number of rows
+	while [[ $i -le $c1 ]]
+	do
+		sum=0
+		#Read individual row into file and change '\t' to '\n'
+		cut -f $i $1 | cat > $newCol
+
+		#Itterate through row and find sum	
+		while read num
+		do
+			sum=$(($sum + $num))
+		done < $newCol
+
+		#Calculate the mean 
+		#If the mean is positive, round 0.5 up, away from zero
+		if [[ $sum -gt 0 ]]
+		then
+			echo -n -e "$(( ($sum + $r1/2) / $r1 ))\t" >> $mean
+		#If the mean is negative, round 0.5 down, away from zero
+		else
+			echo -n -e "$(( ($sum - $r1/2) / $r1 ))\t" >> $mean
+		fi
+
+		#Increment though ith row of Matrix
+		i=$(($i + 1))
+	 done
+
+	#Remove trailing tab from row and return 1xN matrix to stdout
+	 temp=$(cat $mean | tr '\n' '\t');temp=${temp%?};echo "$temp"
+
+	 exit 0
+ }
+
+
+
+# Function Name: add
+# Description: Takes two NxM matricies and sums the i,jth terms
+#              to make new NxM
+# Input: Files containing tab delineated NxM matricies
+# Output: returns tab delineated NxM matrix of sums to stdout
+
+# Status: Full fuckin points!!!
+add () {
+	c1=$(num_col $1);r1=$(num_row $1)
+
+	#Check that dimensions all match
+	if [[ $c1 -ne $(num_col $2) ]] | [[ $r1 -ne $(num_row $2) ]]
+	then
+		echo -e "Incorrect matrix dimensions" >&2; exit 1
+	fi
+
+	#Reset variables
+	i=1;j=1;
+	newLine=./tempLine$$
+	line1=./tempLine1$$
+	line2=./tempLine2$$
+
+	while [[ i -le $r1 ]]
+	do
+
+		#Reset variables
+		echo -n "" > $newLine
+		j=1
+
+		#Grab ith line from both arrays
+		echo -e "$(head -n $i $1 | tail -n 1)" > $line1
+		echo -e "$(head -n $i $2 | tail -n 1)" > $line2
+		
+
+		while [[ j -le $c1 ]]
+		do
+			#Add the i,jth terms from each array and sum them
+			n1=$(cut -f $j $line1);n2=$(cut -f $j $line2)
+			#Append value to end of newLine
+			echo -n -e "$(( $n1 + $n2 ))\t" >> $newLine
+			
+			#Itterate through the jth item col of the ith row
+			j=$(($j + 1))
+		done
+		
+		#Remove the trailing tab and append to newMatrix
+		temp=$(cat $newLine);temp=${temp%?} 
+		echo -e "$temp" >> $newMatrix
+
+		#Itterate through the ith row
+		i=$(($i + 1))
+	done 
+
+	#Output the matrix to stdout
+	cat $newMatrix
+}
+
+
+# Function Name: multiply
+# Description: performs matrix multiplication on NxM matrix and MxP matrix to return NxP matrix where each i,jth term is dot product of ith row of NxM and jth col of MxP
+# Input: Files containing tab delineated matricies
+# Output: returns tab delineated NxP matrix to stdout
+
+#Status: I'm finished!!!! Hi grading TA
+multiply () {
+	r1=$(num_row $1);c1=$(num_col $1)
+	r2=$(num_row $2);c2=$(num_col $2)
+
+	#Check that dimensions all match
+	if [[ $c1 -ne $r2 ]]
+	then
+		echo -e "Incorrect matrix dimensions" >&2; exit 1
+	fi
+
+	#Reset variables
+	i=1
+	newLine=./tempLine$$
+	line1=./tempLine1$$
+	line2=./tempLine2$$
+
+	while [[ $i -le $r1 ]]
+	do
+
+		#Reset variables
+		j=1;echo -n"">$newLine
+		
+		#Grab ith line from M1
+		echo -e "$(head -n $i $1 | tail -n 1)" > $line1
+
+		while [[ j -le $c2 ]]
+		do
+			#Reset variables
+			k=1;sum=0
+
+			#Select the jth column from M2
+			echo -e "$(cut -f $j $2 | tr '\n' '\t')" > $line2
+
+			#Take the dot product of the ith row from M1 and the
+			#jth column from M2 to get the ith jth element of the new matrix
+			while [[ k -le $c1 ]]
+			do
+				#Multiply the $kth element from row i of M1 and col j of M2
+				n1=$(cut -f $k $line1);n2=$(cut -f $k $line2)
+				sum=$(($sum + $(echo -n -e "$(( $n1*$n2 ))\t")))
+
+				#Itterate through kth term of col j and row i
+				k=$(($k + 1))
+			done
+
+			#Append the dot product to the newLine
+			echo -n -e "$sum\t" >> $newLine
+
+			#Itterate through jth col of M2
+			j=$(($j + 1))
+
+		done
+
+		#Remove the trailing tab character and append row to newMatrix
+		temp=$(cat $newLine);temp=${temp%?} 
+		echo -e "$temp" >> $newMatrix
+
+		#Itterate through ith row of M1
+		i=$(($i + 1))
+	done 
+
+	cat $newMatrix
+}
+
+#Validates the input fro the command line/ pipe
+case "$1" in
+	dims | transpose | mean)
+
+		numArg=$#
+		#Check to see if the file was pipped in
+		if [ $# -eq 1 ]
+		then
+			file1=./temp2
+			cat>$file1
+			numArg=2
+		#Check to make sure there is only one file
+		elif [[ $numArg -ne 2 ]]
+		then
+			echo -e "Incorrect number of arguments,$# $@" >&2; exit 1
+		#Check to make sure the file is readable
+		elif [[ ! -r $2 ]]
+		then
+			echo -e "Unreadable file: $2" >&2; exit 1	
+		fi
+		#If all tests are clear, call function with input file
+		# ASSUMES THAT A FILE PIPED IN IS READABLE!!!
+		$@ $file1; exit 0
+		;;
+	 
+	add | multiply)	
+		 #Checl to make sure there are two files
+		 if [[ $# -ne 3 ]]
+		 then
+			 echo -e "Incorrect number of arguments" >&2; exit 1
+			 #Check to make sure that both files are readable
+		 elif [[ ! -r $2 ]] | [[ ! -r $3 ]]
+		 then
+			 echo "Unreadable file" >&2; exit 1
+		 fi
+		 #If all tests are clear, call function with input files
+		 $@; exit 0
+		 ;;
+		 #If no functions are called, exit out
+		 *)
+		 	echo -e "Invalid command: $1" >&2; exit 1
+esac
+
+rm -f temp*
+
