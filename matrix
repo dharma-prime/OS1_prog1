@@ -2,11 +2,25 @@
 #
 # Program Name: matrix
 # Author: Bodhidharma Prime
-# Date: 10/8/19
+# Date Created: 10/8/19
 # Description: Performs matrix opperations for given inputs
 
+# This is based off a previous submission for this class F2019
+# Original script and this submission can be found on github
+# github.com/dharma-prime/OS1_prog1
+
+# Date Updated: 4/17/20
+# - Included properr handling of temp files
+# - added aditional comments
+
+
 # GLOBAL VARIABLES
-newMatrix=./temp1$$
+newMatrix=./temp1-$$
+
+# Function Name: cleanup
+cleanup() {
+	rm -f temp*-$$
+}
 
 # Function Name: num_row
 # Description: Counts the number of rows in NxM array
@@ -34,7 +48,7 @@ num_col () {
 # Output: Returns "N M" to stdout
 
 # Status: Full points!
-dims () { 
+dims () {
 	echo -e "$(num_row $1) $(num_col $1)"
 }
 
@@ -68,8 +82,8 @@ transpose () {
 mean () {
 	c1=$(num_col $1);r1=$(num_row $1)
 	i=1;j=1;
-	newCol=./tempRow$$
-	mean=./tempM$$
+	newCol=./tempRow-$$
+	mean=./tempM-$$
 	#Itterate through number of rows
 	while [[ $i -le $c1 ]]
 	do
@@ -77,13 +91,13 @@ mean () {
 		#Read individual row into file and change '\t' to '\n'
 		cut -f $i $1 | cat > $newCol
 
-		#Itterate through row and find sum	
+		#Itterate through row and find sum
 		while read num
 		do
 			sum=$(($sum + $num))
 		done < $newCol
 
-		#Calculate the mean 
+		#Calculate the mean
 		#If the mean is positive, round 0.5 up, away from zero
 		if [[ $sum -gt 0 ]]
 		then
@@ -123,9 +137,9 @@ add () {
 
 	#Reset variables
 	i=1;j=1;
-	newLine=./tempLine$$
-	line1=./tempLine1$$
-	line2=./tempLine2$$
+	newLine=./tempLine-$$
+	line1=./tempLine1-$$
+	line2=./tempLine2-$$
 
 	while [[ i -le $r1 ]]
 	do
@@ -137,7 +151,7 @@ add () {
 		#Grab ith line from both arrays
 		echo -e "$(head -n $i $1 | tail -n 1)" > $line1
 		echo -e "$(head -n $i $2 | tail -n 1)" > $line2
-		
+
 
 		while [[ j -le $c1 ]]
 		do
@@ -145,18 +159,18 @@ add () {
 			n1=$(cut -f $j $line1);n2=$(cut -f $j $line2)
 			#Append value to end of newLine
 			echo -n -e "$(( $n1 + $n2 ))\t" >> $newLine
-			
+
 			#Itterate through the jth item col of the ith row
 			j=$(($j + 1))
 		done
-		
+
 		#Remove the trailing tab and append to newMatrix
-		temp=$(cat $newLine);temp=${temp%?} 
+		temp=$(cat $newLine);temp=${temp%?}
 		echo -e "$temp" >> $newMatrix
 
 		#Itterate through the ith row
 		i=$(($i + 1))
-	done 
+	done
 
 	#Output the matrix to stdout
 	cat $newMatrix
@@ -181,16 +195,16 @@ multiply () {
 
 	#Reset variables
 	i=1
-	newLine=./tempLine$$
-	line1=./tempLine1$$
-	line2=./tempLine2$$
+	newLine=./tempLine-$$
+	line1=./tempLine1-$$
+	line2=./tempLine2-$$
 
 	while [[ $i -le $r1 ]]
 	do
 
 		#Reset variables
 		j=1;echo -n"">$newLine
-		
+
 		#Grab ith line from M1
 		echo -e "$(head -n $i $1 | tail -n 1)" > $line1
 
@@ -223,25 +237,33 @@ multiply () {
 		done
 
 		#Remove the trailing tab character and append row to newMatrix
-		temp=$(cat $newLine);temp=${temp%?} 
+		temp=$(cat $newLine);temp=${temp%?}
 		echo -e "$temp" >> $newMatrix
 
 		#Itterate through ith row of M1
 		i=$(($i + 1))
-	done 
+	done
 
 	cat $newMatrix
 }
 
-#Validates the input fro the command line/ pipe
+# Main
+# handles/ validates user input
+
+# Set program to cleanup directory when program exits
+trap cleanup EXIT
+
+# Validate the input from the command line/ pipe
 case "$1" in
+
+	# Case 1) all functions that require single matrix
 	dims | transpose | mean)
 
 		numArg=$#
-		#Check to see if the file was pipped in
+		#If a file was piped in, read from cat.
 		if [ $# -eq 1 ]
 		then
-			file1=./temp2
+			file1=./temp2-$$
 			cat>$file1
 			numArg=2
 		#Check to make sure there is only one file
@@ -251,19 +273,21 @@ case "$1" in
 		#Check to make sure the file is readable
 		elif [[ ! -r $2 ]]
 		then
-			echo -e "Unreadable file: $2" >&2; exit 1	
+			echo -e "Unreadable file: $2" >&2; exit 1
 		fi
 		#If all tests are clear, call function with input file
 		# ASSUMES THAT A FILE PIPED IN IS READABLE!!!
 		$@ $file1; exit 0
 		;;
-	 
-	add | multiply)	
-		 #Checl to make sure there are two files
+
+	# Case 2) all functions that require two matricies
+	add | multiply)
+
+		 #Check to make sure there are two files
 		 if [[ $# -ne 3 ]]
 		 then
 			 echo -e "Incorrect number of arguments" >&2; exit 1
-			 #Check to make sure that both files are readable
+		 #Check to make sure that both files are readable
 		 elif [[ ! -r $2 ]] | [[ ! -r $3 ]]
 		 then
 			 echo "Unreadable file" >&2; exit 1
@@ -275,6 +299,3 @@ case "$1" in
 		 *)
 		 	echo -e "Invalid command: $1" >&2; exit 1
 esac
-
-rm -f temp*
-
